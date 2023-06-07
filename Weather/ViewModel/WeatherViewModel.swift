@@ -16,13 +16,15 @@ class WeatherViewModel: NSObject, ObservableObject {
         case location
     }
 
-    init(dataProvider: WeatherDataProviding = WeatherDataProvider(),
-         locationManager: LocationManaging = CLLocationManager()
+    init(
+        dataProvider: WeatherDataProviding = WeatherDataProvider(),
+        locationManager: LocationManaging = CLLocationManager()
     ) {
         self.dataProvider = dataProvider
         self.locationManager = locationManager
         super.init()
         self.configureLocationManager()
+        setup()
     }
 
 
@@ -72,16 +74,29 @@ class WeatherViewModel: NSObject, ObservableObject {
         locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
     }
 
+    func setup() {
+        guard let city = UserDefaults.standard.string(forKey: "cityName") else {
+            return
+        }
+        self.cityName = city
+        fetchWeatherData()
+    }
+
     func fetchWeatherData() {
         Task { @MainActor in
             result = .loading
             do {
                 let weatherData = try await dataProvider.fetchWeather(city: cityName)
                 result = .success(weatherData)
+                saveLastfetchedToUserDefaults(cityName: cityName)
             } catch {
                 result = .failure(error)
             }
         }
+    }
+
+    private func saveLastfetchedToUserDefaults(cityName: String) {
+        UserDefaults.standard.set(cityName, forKey: "cityName")
     }
 
     func fetchCurrentLocationWeather() {
